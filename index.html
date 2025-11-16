@@ -79,11 +79,21 @@
   }
 
   /* タイル（絶対配置して動かす） - シンプルなモノトーン */
+    /* タイル（絶対配置して動かす） - シンプルなモノトーン */
   .tile{
-    position:absolute; display:flex; align-items:center; justify-content:center;
-    border-radius:8px; font-weight:800; transition: transform 120ms ease, opacity 120ms ease;
+    position:absolute;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:8px;
+    font-weight:800;
+    /* left/top を変えるのでこれらにトランジションを追加 */
+    transition: left 120ms ease, top 120ms ease, opacity 120ms ease;
     box-shadow: 0 3px 0 rgba(0,0,0,0.03);
+    box-sizing: border-box; /* サイズ計算を明確に */
+    overflow: hidden;
   }
+
   .v-2{background:#ffffff;color:#333;border:1px solid #ccff00;font-size:18px}
   .v-4{background:#fbfbfb;color:#333;border:1px solid #fbff02}
   .v-8{background:#f7f7f7;color:#333;border:1px solid #ffa200}
@@ -249,29 +259,89 @@ function updateBest(){
   if(score>best){ best = score; localStorage.setItem('2048_best',best); bestEl.textContent = best; }
 }
 
-/* 描画ロジック（シンプルタイル） */
 function placeTiles(addedPositions=[]){
   // 既存の .tile を消す
   document.querySelectorAll('.tile').forEach(n=>n.remove());
-  const rect = boardEl.getBoundingClientRect();
-  const gap = 12;
-  const cellSize = (rect.width - gap*3)/4;
+
+  // board 内のセル要素を取得（render()で常に16個の.cellがある前提）
+  const cells = boardEl.querySelectorAll('.cell');
+  if(cells.length !== SIZE * SIZE){
+    // safety fallback: 古い方式（既存の実装）にフォールバック
+    console.warn('cells not ready, falling back');
+    const rect = boardEl.getBoundingClientRect();
+    const gap = 12;
+    const cellSize = Math.floor((rect.width - gap*3) / 4);
+    for(let r=0;r<SIZE;r++){
+      for(let c=0;c<SIZE;c++){
+        const v = grid[r][c];
+        if(v===0) continue;
+        const tile = document.createElement('div');
+        tile.className = 'tile ' + (v<=64 ? 'v-'+v : 'v-large');
+        tile.textContent = v;
+        tile.style.width = tile.style.height = cellSize + 'px';
+        tile.style.left = (c * (cellSize + gap)) + 'px';
+        tile.style.top  = (r * (cellSize + gap)) + 'px';
+        const isNew = addedPositions.some(p => p[0]===r && p[1]===c);
+        if(isNew) tile.classList.add('spawn');
+        boardEl.appendChild(tile);
+        if(isNew) requestAnimationFrame(()=> tile.classList.add('pop'));
+      }
+    }
+    return;
+  }
+
+  // 各セルの位置とサイズを直接利用してタイルを合わせる
+  // cells は DOM の順（行優先）で並んでいるはずなので index = r*SIZE + c
   for(let r=0;r<SIZE;r++){
     for(let c=0;c<SIZE;c++){
       const v = grid[r][c];
       if(v===0) continue;
+      const idx = r * SIZE + c;
+      const cell = cells[idx];
+      const cellRect = {
+        left: cell.offsetLeft,
+        top: cell.offsetTop,
+        width: cell.clientWidth,
+        height: cell.clientHeight
+      };
+
       const tile = document.createElement('div');
       tile.className = 'tile ' + (v<=64 ? 'v-'+v : 'v-large');
       tile.textContent = v;
-      tile.style.width = tile.style.height = cellSize + 'px';
-      tile.style.transform = `translate(${c*(cellSize+gap)}px, ${r*(cellSize+gap)}px)`;
+
+      // 幅・高さをセルと完全に一致させる（borderを含める場合は clientWidth/Height が良い）
+      tile.style.width = cellRect.width + 'px';
+      tile.style.height = cellRect.height + 'px';
+
+      // left/top を board の左上を基準に直接設定
+      tile.style.left = cellRect.left + 'px';
+      tile.style.top  = cellRect.top + 'px';
+
+      // 新しく出現したタイルは spawn -> pop のアニメーションを使う
       const isNew = addedPositions.some(p => p[0]===r && p[1]===c);
-      if(isNew) tile.classList.add('spawn');
+      if(isNew) {
+        tile.classList.add('spawn');
+        // spawn は transform scale 小さくしてるので popup させるために使う。
+        // ただし .tile のアニメーションは left/top に効くようにしているので
+        // transform アニメーションと混在してもOK。
+        tile.style.transformOrigin = 'center center';
+      }
+
       boardEl.appendChild(tile);
-      if(isNew) requestAnimationFrame(()=> tile.classList.add('pop'));
+
+      if(isNew) {
+        // pop のため少し遅らせて class 追加
+        requestAnimationFrame(()=> {
+          tile.classList.add('pop');
+          // remove spawn so pop animation runs from small->1
+          tile.classList.remove('spawn');
+        });
+      }
     }
   }
 }
+
+
 
 function render(){
   // 背景セルを作る（常に16個）
