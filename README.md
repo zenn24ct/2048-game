@@ -1,5 +1,8 @@
 # 🧩 2048風パズルゲーム
 
+[2048のサイト](https://zenn24ct.github.io/2048-game/2048)
+
+[chain reactorのサイト](https://zenn24ct.github.io/2048-game/chain-reactor)
 ## 🎮 概要
 - ブラウザ上で遊べる **シンプルな2048風パズルゲーム**  
 - 同じ数字をスライドで合体させ、2048を目指す  
