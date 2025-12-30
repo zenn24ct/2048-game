@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Chain Reactor</title>
+
+<style>
+  :root{
+    --bg: #0a0e27;
+    --panel: #1a1f3a;
+    --board: #151935;
+    --cell-inactive: #2a2f4a;
+    --cell-active: #4d9fff;
+    --accent: #ffffff;
+    --muted: #8b93b8;
+    --glow-blue: #4d9fff;
+    --glow-cyan: #00d4ff;
+    --glow-purple: #b84dff;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+    background: radial-gradient(circle at 50% 50%, #0f1433, #050812);
+    color:var(--accent);
+  }
+
+  .app{
+    width:420px; max-width:94vw; padding:16px;
+  }
+
+  header{
+    text-align:center;
+    margin-bottom:20px;
+  }
+  h1{
+    font-size:28px;
+    margin:0 0 8px 0;
+    background: linear-gradient(135deg, var(--glow-blue), var(--glow-cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 30px rgba(77,159,255,0.5);
+  }
+  .subtitle{
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:4px;
+  }
+
+  .stats{
+    display:flex;
+    gap:12px;
+    justify-content:center;
+    margin-bottom:20px;
+  }
+  .stat-box{
+    background:var(--panel);
+    padding:10px 16px;
+    border-radius:12px;
+    border:1px solid rgba(77,159,255,0.2);
+    min-width:80px;
+    text-align:center;
+  }
+  .stat-label{
+    font-size:11px;
+    color:var(--muted);
+    margin-bottom:4px;
+  }
+  .stat-value{
+    font-size:20px;
+    font-weight:700;
+    color:var(--glow-cyan);
+  }
+
+  .board{
+    width:100%;
+    max-width:380px;
+    margin:0 auto 20px auto;
+    background:var(--board);
+    border-radius:16px;
+    padding:16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(77,159,255,0.1);
+    position:relative;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(var(--grid-size, 6), 1fr);
+    gap:8px;
+  }
+
+  .cell{
+    aspect-ratio: 1;
+    background:var(--cell-inactive);
+    border-radius:8px;
+    border:2px solid transparent;
+    cursor:pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position:relative;
+    overflow:hidden;
+  }
+
+  .cell::before{
+    content:'';
+    position:absolute;
+    inset:0;
+    background: radial-gradient(circle at center, rgba(77,159,255,0.3), transparent);
+    opacity:0;
+    transition: opacity 0.3s ease;
+  }
+
+  .cell:hover::before{
+    opacity:0.5;
+  }
+
+  .cell.active{
+    background: linear-gradient(135deg, var(--glow-blue), var(--glow-cyan));
+    border-color: var(--glow-cyan);
+    box-shadow: 0 0 20px rgba(77,159,255,0.6), inset 0 0 20px rgba(255,255,255,0.2);
+    animation: pulse 1s ease-in-out infinite;
+  }
+
+  .cell.reacting{
+    animation: react 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes pulse{
+    0%, 100%{ transform: scale(1); }
+    50%{ transform: scale(1.05); }
+  }
+
+  @keyframes react{
+    0%{ transform: scale(1); }
+    30%{ transform: scale(1.2); background: var(--glow-purple); }
+    100%{ transform: scale(1); }
+  }
+
+  .controls{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    flex-wrap:wrap;
+  }
+
+  button{
+    background: linear-gradient(135deg, var(--panel), #252a45);
+    border:1px solid rgba(77,159,255,0.3);
+    padding:12px 20px;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:14px;
+    color:var(--accent);
+    font-weight:600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+
+  button:hover{
+    border-color: var(--glow-cyan);
+    box-shadow: 0 0 20px rgba(77,159,255,0.4);
+    transform: translateY(-2px);
+  }
+
+  button:active{
+    transform: translateY(0);
+  }
+
+  .level-selector{
+    display:flex;
+    gap:8px;
+    justify-content:center;
+    margin-bottom:16px;
+  }
+
+  .level-btn{
+    padding:8px 16px;
+    font-size:13px;
+  }
+
+  .level-btn.selected{
+    background: linear-gradient(135deg, var(--glow-blue), var(--glow-cyan));
+    border-color: var(--glow-cyan);
+  }
+
+  .message{
+    text-align:center;
+    margin-top:16px;
+    font-size:14px;
+    min-height:20px;
+    color:var(--glow-cyan);
+  }
+
+  .victory{
+    animation: victory 0.6s ease;
+  }
+
+  @keyframes victory{
+    0%, 100%{ transform: scale(1); }
+    50%{ transform: scale(1.1); }
+  }
+
+  @media (max-width:420px){
+    .app{padding:12px}
+    h1{font-size:24px}
+    .board{padding:12px}
+    .grid{gap:6px}
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Chain Reactor</h1>
+      <div class="subtitle">セルをクリックすると、そのセルと上下左右4マスが反転</div>
+      <div class="subtitle">目標：すべてのセルを青く光らせる（最小クリック数を目指そう）</div>
+    </header>
+
+    <div class="stats">
+      <div class="stat-box">
+        <div class="stat-label">CLICKS</div>
+        <div class="stat-value" id="clicks">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">ACTIVE</div>
+        <div class="stat-value" id="active">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">LEVEL</div>
+        <div class="stat-value" id="level">1</div>
+      </div>
+    </div>
+
+    <div class="level-selector">
+      <button class="level-btn selected" data-level="1">Easy</button>
+      <button class="level-btn" data-level="2">Medium</button>
+      <button class="level-btn" data-level="3">Hard</button>
+    </div>
+
+    <div class="board">
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <div class="controls">
+      <button id="btnReset">🔄 Reset</button>
+      <button id="btnHint">💡 Hint</button>
+      <button id="btnSolve">🎯 Auto Solve</button>
+    </div>
+
+    <div class="message" id="message"></div>
+  </div>
+
+<script>
+// ゲーム設定
+const LEVELS = {
+  1: { size: 6, reactRadius: 1, chainDelay: 150 },
+  2: { size: 8, reactRadius: 1, chainDelay: 120 },
+  3: { size: 10, reactRadius: 1, chainDelay: 100 }
+};
+
+let currentLevel = 1;
+let gridSize = LEVELS[currentLevel].size;
+let grid = [];
+let clicks = 0;
+let isAnimating = false;
+
+const gridEl = document.getElementById('grid');
+const clicksEl = document.getElementById('clicks');
+const activeEl = document.getElementById('active');
+const levelEl = document.getElementById('level');
+const messageEl = document.getElementById('message');
+
+// グリッド初期化
+function initGrid(){
+  grid = Array(gridSize).fill().map(() => Array(gridSize).fill(false));
+  clicks = 0;
+  updateStats();
+  render();
+  showMessage('');
+}
+
+// 描画
+function render(){
+  gridEl.style.setProperty('--grid-size', gridSize);
+  gridEl.innerHTML = '';
+  
+  for(let r = 0; r < gridSize; r++){
+    for(let c = 0; c < gridSize; c++){
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      if(grid[r][c]) cell.classList.add('active');
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      cell.addEventListener('click', ()=> handleClick(r, c));
+      gridEl.appendChild(cell);
+    }
+  }
+}
+
+// クリック処理
+async function handleClick(r, c){
+  if(isAnimating) return;
+  
+  isAnimating = true;
+  clicks++;
+  updateStats();
+  
+  await triggerReaction(r, c);
+  
+  isAnimating = false;
+  
+  checkVictory();
+}
+
+// 反転処理（クリックしたセル + 上下左右）
+async function triggerReaction(r, c){
+  const positions = [
+    {r, c}, // 自分
+  ];
+  
+  // 上下左右を追加
+  const directions = [
+    {dr: -1, dc: 0}, // 上
+    {dr: 1, dc: 0},  // 下
+    {dr: 0, dc: -1}, // 左
+    {dr: 0, dc: 1}   // 右
+  ];
+  
+  for(const {dr, dc} of directions){
+    const nr = r + dr;
+    const nc = c + dc;
+    if(nr >= 0 && nr < gridSize && nc >= 0 && nc < gridSize){
+      positions.push({r: nr, c: nc});
+    }
+  }
+  
+  // アニメーション付きで反転
+  for(const {r, c} of positions){
+    const cell = gridEl.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+    if(cell){
+      cell.classList.add('reacting');
+    }
+  }
+  
+  await new Promise(resolve => setTimeout(resolve, 300));
+  
+  for(const {r, c} of positions){
+    grid[r][c] = !grid[r][c];
+    
+    const cell = gridEl.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+    if(cell){
+      cell.classList.toggle('active');
+      cell.classList.remove('reacting');
+    }
+  }
+  
+  updateStats();
+}
+
+// 統計更新
+function updateStats(){
+  clicksEl.textContent = clicks;
+  
+  let activeCount = 0;
+  for(let r = 0; r < gridSize; r++){
+    for(let c = 0; c < gridSize; c++){
+      if(grid[r][c]) activeCount++;
+    }
+  }
+  activeEl.textContent = activeCount;
+}
+
+// 勝利判定
+function checkVictory(){
+  let allActive = true;
+  for(let r = 0; r < gridSize; r++){
+    for(let c = 0; c < gridSize; c++){
+      if(!grid[r][c]){
+        allActive = false;
+        break;
+      }
+    }
+    if(!allActive) break;
+  }
+  
+  if(allActive){
+    showMessage(`🎉 完成！ ${clicks}クリックでクリア！`);
+    messageEl.classList.add('victory');
+    setTimeout(() => messageEl.classList.remove('victory'), 600);
+  }
+}
+
+// メッセージ表示
+function showMessage(msg){
+  messageEl.textContent = msg;
+}
+
+// ヒント
+function hint(){
+  showMessage('💡 パズルのコツ：同じ場所を2回クリックすると元に戻ります。計画的に！');
+  setTimeout(() => showMessage(''), 3000);
+}
+
+// 自動解法（Lights Out解法アルゴリズム）
+async function autoSolve(){
+  if(isAnimating) return;
+  
+  showMessage('🤖 解法を計算中...');
+  await new Promise(resolve => setTimeout(resolve, 300));
+  
+  // 現在の状態を保存
+  const originalGrid = grid.map(row => [...row]);
+  const originalClicks = clicks;
+  
+  // ガウス消去法でLights Out問題を解く
+  const solution = solveLightsOut();
+  
+  if(!solution){
+    showMessage('❌ この状態からの解法が見つかりませんでした。Resetしてください。');
+    setTimeout(() => showMessage(''), 3000);
+    return;
+  }
+  
+  // 元の状態に戻す
+  grid = originalGrid;
+  clicks = originalClicks;
+  render();
+  updateStats();
+  
+  showMessage('自動解法中...');
+  
+  // 解法を実行
+  for(let r = 0; r < gridSize; r++){
+    for(let c = 0; c < gridSize; c++){
+      if(solution[r][c]){
+        await handleClick(r, c);
+        await new Promise(resolve => setTimeout(resolve, 400));
+      }
+    }
+  }
+  
+  showMessage('');
+}
+
+// Lights Out問題をガウス消去法で解く
+function solveLightsOut(){
+  const n = gridSize * gridSize;
+  
+  // 拡大係数行列を作成 (GF(2)上での連立方程式)
+  const matrix = [];
+  
+  for(let i = 0; i < n; i++){
+    const row = Array(n + 1).fill(0);
+    
+    // i番目のボタンを押したときの効果
+    const r = Math.floor(i / gridSize);
+    const c = i % gridSize;
+    
+    // 自分自身
+    row[i] = 1;
+    
+    // 上下左右
+    const dirs = [{dr:-1,dc:0},{dr:1,dc:0},{dr:0,dc:-1},{dr:0,dc:1}];
+    for(const {dr, dc} of dirs){
+      const nr = r + dr;
+      const nc = c + dc;
+      if(nr >= 0 && nr < gridSize && nc >= 0 && nc < gridSize){
+        const j = nr * gridSize + nc;
+        row[j] = 1;
+      }
+    }
+    
+    // 現在の状態（0なら点灯させたい = 1）
+    row[n] = grid[r][c] ? 0 : 1;
+    
+    matrix.push(row);
+  }
+  
+  // ガウス消去法 (GF(2))
+  for(let col = 0; col < n; col++){
+    // ピボットを探す
+    let pivotRow = -1;
+    for(let row = col; row < n; row++){
+      if(matrix[row][col] === 1){
+        pivotRow = row;
+        break;
+      }
+    }
+    
+    if(pivotRow === -1) continue;
+    
+    // 行を交換
+    if(pivotRow !== col){
+      [matrix[col], matrix[pivotRow]] = [matrix[pivotRow], matrix[col]];
+    }
+    
+    // 他の行を消去
+    for(let row = 0; row < n; row++){
+      if(row !== col && matrix[row][col] === 1){
+        for(let c = 0; c <= n; c++){
+          matrix[row][c] = (matrix[row][c] + matrix[col][c]) % 2;
+        }
+      }
+    }
+  }
+  
+  // 後退代入して解を求める
+  const solution2D = Array(gridSize).fill().map(() => Array(gridSize).fill(false));
+  
+  for(let i = 0; i < n; i++){
+    const r = Math.floor(i / gridSize);
+    const c = i % gridSize;
+    
+    // 対角要素が1なら解がある
+    if(matrix[i][i] === 1){
+      solution2D[r][c] = matrix[i][n] === 1;
+    }
+  }
+  
+  return solution2D;
+}
+
+// レベル選択
+document.querySelectorAll('.level-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    
+    currentLevel = parseInt(btn.dataset.level);
+    gridSize = LEVELS[currentLevel].size;
+    levelEl.textContent = currentLevel;
+    
+    initGrid();
+  });
+});
+
+// ボタン
+document.getElementById('btnReset').addEventListener('click', initGrid);
+document.getElementById('btnHint').addEventListener('click', hint);
+document.getElementById('btnSolve').addEventListener('click', autoSolve);
+
+// 開始
+initGrid();
+
+</script>
+</body>
+</html>
