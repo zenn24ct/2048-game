@@ -5,39 +5,30 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>2048</title>
-
-    <!--
-  - 画面ボタンで操作（←↑→↓）
-  - キーボード（矢印/WASD）対応
--->
-
     <style>
         :root {
-            --board: #efefef;
+            --bg: #f6f6f6;
+            --board: #e9e9e9;
+            --cell: #ffffff;
             --accent: #222;
-            /* テキスト・アイコン色 */
-            --tile-border: #ffffff;
         }
 
-        * {
-            box-sizing: border-box
-        }
-
+        html,
         body {
+            height: 100%;
             margin: 0;
-            min-height: 100vh;
+            font-family: system-ui, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--accent);
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", Arial;
-            background: linear-gradient(180deg, var(--bg), #ffffff);
-            color: var(--accent);
+            justify-content: center
         }
 
         .app {
-            width: 380px;
+            width: 340px;
             max-width: 94vw;
-            padding: 12px;
+            padding: 12px
         }
 
         header {
@@ -48,213 +39,131 @@
         }
 
         h1 {
-            font-size: 16px;
+            font-size: 20px;
             margin: 0
         }
 
-        .meta {
-            font-size: 13px;
-            color: var(--muted)
-        }
-
-        /* ボタン群とスコア表示 */
-        .toprow {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 10px
-        }
-
         .score {
-            background: var(--panel);
-            padding: 8px 12px;
-            border-radius: 8px;
-            display: flex;
-            gap: 8px;
-            align-items: center;
+            font-weight: 700
         }
 
-        .score small {
-            display: block;
-            font-size: 11px;
-            color: var(--muted)
-        }
-
-        .score .num {
-            font-weight: 700;
-            font-size: 16px
-        }
-
-        .controls-row {
-            display: flex;
-            gap: 8px;
-            align-items: center
-        }
-
-        button {
-            background: var(--panel);
-            border: 1px solid rgba(0, 0, 0, 0.06);
-            padding: 8px 10px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 13px;
-            color: var(--accent);
-        }
-
-        /* ゲームボード */
-        .board-wrap {
-            display: flex;
-            gap: 12px
-        }
-
+        /* （変更ポイント） board の列定義を「縮められる1fr」に */
         .board {
             width: 320px;
             height: 320px;
             background: var(--board);
-            border-radius: 10px;
             padding: 12px;
+            border-radius: 8px;
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            /* ← ここを変更 */
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 12px;
-            position: relative;
+            box-sizing: border-box;
             user-select: none;
-            touch-action: none;
-            /* スワイプ用 */
         }
 
+        /* cell を縮められるようにする（安全策） */
         .cell {
             background: var(--cell);
             border-radius: 8px;
-            border: 1px solid var(--tile-border);
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
             font-size: 20px;
-            color: var(--accent);
             min-height: 64px;
+            min-width: 0;
+            /* ← ここを追加（重要） */
+            overflow: hidden;
+            /* 余剰テキストをはみ出させない */
         }
 
-        /* タイル（絶対配置して動かす） - シンプルなモノトーン */
-        /* タイル（絶対配置して動かす） - シンプルなモノトーン */
+        /* tile をセル幅にピッタリ収める */
         .tile {
-            position: absolute;
+            width: 100%;
+            /* セル幅に合わせる */
+            box-sizing: border-box;
+            /* padding を含めて計算 */
+            padding: 20px 10px;
+            /* 大きすぎるpaddingは縮小（必要なら調整） */
+            border-radius: 6px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 8px;
-            font-weight: 800;
-            /* left/top を変えるのでこれらにトランジションを追加 */
-            transition: left 120ms ease, top 120ms ease, opacity 120ms ease;
-            box-shadow: 0 3px 0 rgba(0, 0, 0, 0.03);
-            box-sizing: border-box;
-            /* サイズ計算を明確に */
-            overflow: hidden;
+            font-weight: 700;
         }
 
+
         .v-2 {
-            background: #ffffff;
-            color: #333;
-            border: 1px solid #ccff00;
-            font-size: 18px
+            background: #fff876;
         }
 
         .v-4 {
-            background: #fbfbfb;
-            color: #333;
-            border: 1px solid #fbff02
+            background: #d5ff99
         }
 
         .v-8 {
-            background: #f7f7f7;
-            color: #333;
-            border: 1px solid #ffa200
+            background: #5ddd01
         }
 
         .v-16 {
-            background: #f3f3f3;
-            color: #333;
-            border: 1px solid #ff0000
+            background: #55eafe
         }
 
         .v-32 {
-            background: #efefef;
-            color: #222;
-            border: 1px solid #8501f9
+            background: #385cff
         }
 
         .v-64 {
-            background: #eaeaea;
-            color: #222;
-            border: 1px solid #ff00d4
+            background: #c459ff
         }
 
-        .v-large {
-            background: #e0e0e0;
-            color: #111;
-            border: 1px solid hsl(249, 100%, 50%)
+        .v-128 {
+            background: #ff5ec4
         }
 
-        .tile.spawn {
-            transform: scale(0.3);
-            opacity: 0
+        .v-256 {
+            background: #ff7b59
         }
 
-        .tile.pop {
-            animation: pop 120ms ease
+        .v-512 {
+            background: #ffb259
         }
 
-        @keyframes pop {
-            from {
-                transform: scale(0.3)
-            }
-
-            to {
-                transform: scale(1)
-            }
+        .v-1024 {
+            background: #ff5972
         }
 
-        /* 操作用の矢印ボタン（大きめで押しやすい） */
-        .arrow-pad {
-            display: grid;
-            grid-template-columns: repeat(3, 44px);
+        .v-2048 {
+            background: #ff5959
+        }
+
+        .controls {
+            display: flex;
             gap: 8px;
-            align-content: center;
-            justify-items: center;
+            margin-top: 10px
         }
 
-        .arrow-pad button {
-            width: 44px;
-            height: 44px;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-        }
-
-        .arrow-empty {
-            visibility: hidden
-        }
-
-        .footer {
-            margin-top: 12px;
-            font-size: 13px;
-            color: var(--muted);
-            display: flex;
-            justify-content: space-between;
-            align-items: center
+        button {
+            padding: 8px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            background: rgb(252, 187, 255)
         }
 
         @media (max-width:420px) {
             .board {
                 width: 92vw;
-                height: 92vw
+                height: 92vw;
+
             }
 
             .cell {
-                min-height: 56px
+                min-height: unset;
+                padding: 6px
             }
         }
     </style>
@@ -263,62 +172,25 @@
 <body>
     <div class="app" role="application" aria-label="2048シンプル版">
         <header>
+            <h1>2048</h1>
             <div>
-                <h1>2048</h1>
-            </div>
-            <div class="score" aria-live="polite">
-                <div>
-                    <small>Score</small>
-                    <div class="num" id="score">0</div>
-                </div>
-                <div style="margin-left:6px;">
-                    <small>Best</small>
-                    <div class="num" id="best">0</div>
-                </div>
+                <div class="score">Score: <span id="score">0</span></div>
+                <div style="font-size:12px;color:#666">Best: <span id="best">0</span></div>
             </div>
         </header>
 
-        <div style="display:flex; gap:12px; align-items:flex-start;">
-            <!-- 左：ゲームボード -->
-            <div>
-                <div class="board" id="board" aria-label="ゲーム盤"></div>
-                <div style="display:flex;gap:8px;margin-top:10px">
-                    <button id="btnNew">New Game</button>
-                    <button id="btnUndo">Undo</button>
-                </div>
-            </div>
+        <div id="board" class="board" aria-label="ゲーム盤"></div>
 
-            <!-- 右：矢印パッド（押しやすい操作領域） -->
-            <div>
-                <div class="arrow-pad" aria-hidden="false" style="margin-top:18px">
-                    <div class="arrow-empty"></div>
-                    <button id="btnUp" title="上（↑）">↑</button>
-                    <div class="arrow-empty"></div>
+        <div class="controls">
+            <button id="btnNew">New Game</button>
 
-                    <button id="btnLeft" title="左（←）">←</button>
-                    <div style="display:flex;flex-direction:column;gap:6px">
-                        <div style="font-size:12px;color:var(--muted);text-align:center">Direction</div>
-                        <div style="display:flex;gap:6px">
-                            <!-- optional small indicator -->
-                        </div>
-                    </div>
-                    <button id="btnRight" title="右（→）">→</button>
-
-                    <div class="arrow-empty"></div>
-                    <button id="btnDown" title="下（↓）">↓</button>
-                    <div class="arrow-empty"></div>
-                </div>
-            </div>
         </div>
     </div>
 
     <script>
-        /* --------------- ゲームロジック（コメント多数） --------------- */
-
-        /* 定数と状態 */
+        /* --- 状態 --- */
         const SIZE = 4;
         let grid = createEmpty();
-        let prevGrid = null; // Undo用
         let score = 0;
         let best = Number(localStorage.getItem('2048_best') || 0);
 
@@ -327,15 +199,12 @@
         const bestEl = document.getElementById('best');
         bestEl.textContent = best;
 
-        /* グリッドユーティリティ */
+        /* --- ユーティリティ --- */
         function createEmpty() {
-            const a = [];
-            for (let r = 0; r < SIZE; r++) a[r] = Array(SIZE).fill(0);
-            return a;
+            return Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
         }
         function copyGrid(g) { return g.map(row => row.slice()) }
 
-        /* ランダムに2または4をセット（90%:10%） */
         function addRandomTile(g) {
             const empties = [];
             for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (g[r][c] === 0) empties.push([r, c]);
@@ -345,7 +214,6 @@
             return { r, c };
         }
 
-        /* 回転：右回転 */
         function rotateRight(g) {
             const out = createEmpty();
             for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) out[c][SIZE - 1 - r] = g[r][c];
@@ -357,7 +225,6 @@
             return res;
         }
 
-        /* 左移動（行ごとに処理） */
         function moveLeft(g) {
             const newG = createEmpty();
             let moved = false, gain = 0;
@@ -374,12 +241,10 @@
                     newG[r][c] = line[c];
                     if (newG[r][c] !== g[r][c]) moved = true;
                 }
-                for (let c = line.length; c < SIZE; c++) newG[r][c] = 0;
             }
             return { moved, gain, grid: newG };
         }
 
-        /* 動けるか判定 */
         function canMove(g) {
             for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
                 if (g[r][c] === 0) return true;
@@ -390,142 +255,43 @@
             return false;
         }
 
-        /* スコア更新 */
-        function updateBest() {
-            if (score > best) { best = score; localStorage.setItem('2048_best', best); bestEl.textContent = best; }
-        }
-
-        function placeTiles(addedPositions = []) {
-            // 既存の .tile を消す
-            document.querySelectorAll('.tile').forEach(n => n.remove());
-
-            // board 内のセル要素を取得（render()で常に16個の.cellがある前提）
-            const cells = boardEl.querySelectorAll('.cell');
-            if (cells.length !== SIZE * SIZE) {
-                // safety fallback: 古い方式（既存の実装）にフォールバック
-                console.warn('cells not ready, falling back');
-                const rect = boardEl.getBoundingClientRect();
-                const gap = 12;
-                const cellSize = Math.floor((rect.width - gap * 3) / 4);
-                for (let r = 0; r < SIZE; r++) {
-                    for (let c = 0; c < SIZE; c++) {
-                        const v = grid[r][c];
-                        if (v === 0) continue;
-                        const tile = document.createElement('div');
-                        tile.className = 'tile ' + (v <= 64 ? 'v-' + v : 'v-large');
-                        tile.textContent = v;
-                        tile.style.width = tile.style.height = cellSize + 'px';
-                        tile.style.left = (c * (cellSize + gap)) + 'px';
-                        tile.style.top = (r * (cellSize + gap)) + 'px';
-                        const isNew = addedPositions.some(p => p[0] === r && p[1] === c);
-                        if (isNew) tile.classList.add('spawn');
-                        boardEl.appendChild(tile);
-                        if (isNew) requestAnimationFrame(() => tile.classList.add('pop'));
-                    }
-                }
-                return;
-            }
-
-            // 各セルの位置とサイズを直接利用してタイルを合わせる
-            // cells は DOM の順（行優先）で並んでいるはずなので index = r*SIZE + c
+        /* --- 描画（簡素） --- */
+        function render() {
+            boardEl.innerHTML = '';
             for (let r = 0; r < SIZE; r++) {
                 for (let c = 0; c < SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
                     const v = grid[r][c];
-                    if (v === 0) continue;
-                    const idx = r * SIZE + c;
-                    const cell = cells[idx];
-                    const cellRect = {
-                        left: cell.offsetLeft,
-                        top: cell.offsetTop,
-                        width: cell.clientWidth,
-                        height: cell.clientHeight
-                    };
-
-                    const tile = document.createElement('div');
-                    tile.className = 'tile ' + (v <= 64 ? 'v-' + v : 'v-large');
-                    tile.textContent = v;
-
-                    // 幅・高さをセルと完全に一致させる（borderを含める場合は clientWidth/Height が良い）
-                    tile.style.width = cellRect.width + 'px';
-                    tile.style.height = cellRect.height + 'px';
-
-                    // left/top を board の左上を基準に直接設定
-                    tile.style.left = cellRect.left + 'px';
-                    tile.style.top = cellRect.top + 'px';
-
-                    // 新しく出現したタイルは spawn -> pop のアニメーションを使う
-                    const isNew = addedPositions.some(p => p[0] === r && p[1] === c);
-                    if (isNew) {
-                        tile.classList.add('spawn');
-                        // spawn は transform scale 小さくしてるので popup させるために使う。
-                        // ただし .tile のアニメーションは left/top に効くようにしているので
-                        // transform アニメーションと混在してもOK。
-                        tile.style.transformOrigin = 'center center';
+                    if (v !== 0) {
+                        const tile = document.createElement('div');
+                        tile.className = 'tile ' + 'v-' + v;
+                        tile.textContent = v;
+                        cell.appendChild(tile);
                     }
-
-                    boardEl.appendChild(tile);
-
-                    if (isNew) {
-                        // pop のため少し遅らせて class 追加
-                        requestAnimationFrame(() => {
-                            tile.classList.add('pop');
-                            // remove spawn so pop animation runs from small->1
-                            tile.classList.remove('spawn');
-                        });
-                    }
+                    boardEl.appendChild(cell);
                 }
             }
-        }
-
-
-
-        function render() {
-            // 背景セルを作る（常に16個）
-            boardEl.innerHTML = '';
-            for (let i = 0; i < 16; i++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                boardEl.appendChild(cell);
-            }
-            placeTiles();
             scoreEl.textContent = score;
+            bestEl.textContent = best;
         }
 
-        /* main move (dir: 0=left,1=up,2=right,3=down) */
+        /* --- メイン移動関数 --- (dir:0=left,1=up,2=right,3=down) */
         function move(dir) {
             const rotated = rotate(grid, -dir);
             const res = moveLeft(rotated);
             if (!res.moved) return false;
             const after = rotate(res.grid, dir);
-            prevGrid = copyGrid(grid); // undo
             grid = after;
             score += res.gain;
-            updateBest();
-            const spawnPos = addRandomTile(grid);
+            if (score > best) { best = score; localStorage.setItem('2048_best', best); }
+            addRandomTile(grid);
             render();
-            if (spawnPos) placeTiles([[spawnPos.r, spawnPos.c]]);
-            if (!canMove(grid)) setTimeout(() => alert('Game Over'), 80);
+            if (!canMove(grid)) setTimeout(() => alert('Game Over'), 30);
             return true;
         }
 
-        /* 新規ゲーム */
-        function startNew() {
-            grid = createEmpty();
-            score = 0;
-            prevGrid = null;
-            addRandomTile(grid);
-            addRandomTile(grid);
-            render();
-        }
-
-        /* Undo */
-        function undo() {
-            if (prevGrid) { grid = prevGrid; prevGrid = null; render(); }
-        }
-
-
-        /* ------------ 入力処理 ------------- */
-        /* keyboard */
+        /* --- 操作イベント --- */
         window.addEventListener('keydown', (e) => {
             const key = e.key;
             let handled = false;
@@ -536,58 +302,19 @@
             if (handled) e.preventDefault();
         });
 
-        /* touch swipe */
-        let touchStartX = 0, touchStartY = 0;
-        boardEl.addEventListener('touchstart', e => {
-            const t = e.changedTouches[0];
-            touchStartX = t.clientX; touchStartY = t.clientY;
-        }, { passive: true });
-        boardEl.addEventListener('touchend', e => {
-            const t = e.changedTouches[0];
-            const dx = t.clientX - touchStartX;
-            const dy = t.clientY - touchStartY;
-            if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
-            if (Math.abs(dx) > Math.abs(dy)) {
-                if (dx > 0) move(2); else move(0);
-            } else {
-                if (dy > 0) move(3); else move(1);
-            }
-        }, { passive: true });
-
-        /* mouse drag for desktop (mousedown -> mouseup) */
-        let dragStartX = null, dragStartY = null;
-        boardEl.addEventListener('mousedown', e => {
-            dragStartX = e.clientX; dragStartY = e.clientY;
-        });
-        window.addEventListener('mouseup', e => {
-            if (dragStartX === null) return;
-            const dx = e.clientX - dragStartX;
-            const dy = e.clientY - dragStartY;
-            dragStartX = null; dragStartY = null;
-            if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
-            if (Math.abs(dx) > Math.abs(dy)) {
-                if (dx > 0) move(2); else move(0);
-            } else {
-                if (dy > 0) move(3); else move(1);
-            }
-        });
-
-        /* 矢印パッドのボタン */
-        document.getElementById('btnUp').addEventListener('click', () => move(1));
-        document.getElementById('btnDown').addEventListener('click', () => move(3));
-        document.getElementById('btnLeft').addEventListener('click', () => move(0));
-        document.getElementById('btnRight').addEventListener('click', () => move(2));
-
-        /* New / Undo */
         document.getElementById('btnNew').addEventListener('click', startNew);
-        document.getElementById('btnUndo').addEventListener('click', undo);
 
-        /* リサイズ時に描画を調整 */
-        new ResizeObserver(() => render()).observe(boardEl);
+        /* --- 新規ゲーム --- */
+        function startNew() {
+            grid = createEmpty();
+            score = 0;
+            addRandomTile(grid);
+            addRandomTile(grid);
+            render();
+        }
 
-        /* 初回ゲームスタート */
+        /* 初回開始 */
         startNew();
-
     </script>
 </body>
 
